@@ -1,9 +1,10 @@
-use std::collections::hash_map::Entry::{Occupied, Vacant};
-use std::collections::{BinaryHeap, HashMap};
 
 use std::hash::Hash;
 
 use super::visit::{EdgeRef, GraphBase, IntoEdges, Visitable};
+use crate::lib::{Occupied, Vacant, BinaryHeap, HashMap, Vec};
+#[cfg(not(feature = "std"))]
+use crate::lib::vec;
 use crate::scored::MinScored;
 
 use crate::algo::Measure;

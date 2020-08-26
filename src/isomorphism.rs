@@ -14,137 +14,141 @@ use self::semantic::NoSemanticMatch;
 use self::semantic::NodeMatcher;
 use self::state::Vf2State;
 
-mod state {
-    use super::*;
+use crate::lib::{Vec};
+#[cfg(not(feature = "std"))]
+use crate::lib::vec;
 
-    #[derive(Debug)]
-    // TODO: make mapping generic over the index type of the other graph.
-    pub struct Vf2State<'a, G: GetAdjacencyMatrix> {
-        /// A reference to the graph this state was built from.
-        pub graph: &'a G,
-        /// The current mapping M(s) of nodes from G0 → G1 and G1 → G0,
-        /// `usize::MAX` for no mapping.
-        pub mapping: Vec<usize>,
-        /// out[i] is non-zero if i is in either M_0(s) or Tout_0(s)
-        /// These are all the next vertices that are not mapped yet, but
-        /// have an outgoing edge from the mapping.
-        out: Vec<usize>,
-        /// ins[i] is non-zero if i is in either M_0(s) or Tin_0(s)
-        /// These are all the incoming vertices, those not mapped yet, but
-        /// have an edge from them into the mapping.
-        /// Unused if graph is undirected -- it's identical with out in that case.
-        ins: Vec<usize>,
-        pub out_size: usize,
-        pub ins_size: usize,
-        pub adjacency_matrix: G::AdjMatrix,
-        generation: usize,
-    }
+    mod state {
+        use super::*;
 
-    impl<'a, G> Vf2State<'a, G>
-    where
-        G: GetAdjacencyMatrix + GraphProp + NodeCompactIndexable + IntoNeighborsDirected,
-    {
-        pub fn new(g: &'a G) -> Self {
-            let c0 = g.node_count();
-            Vf2State {
-                graph: g,
-                mapping: vec![std::usize::MAX; c0],
-                out: vec![0; c0],
-                ins: vec![0; c0 * (g.is_directed() as usize)],
-                out_size: 0,
-                ins_size: 0,
-                adjacency_matrix: g.adjacency_matrix(),
-                generation: 0,
-            }
+        #[derive(Debug)]
+        // TODO: make mapping generic over the index type of the other graph.
+        pub struct Vf2State<'a, G: GetAdjacencyMatrix> {
+            /// A reference to the graph this state was built from.
+            pub graph: &'a G,
+            /// The current mapping M(s) of nodes from G0 → G1 and G1 → G0,
+            /// `usize::MAX` for no mapping.
+            pub mapping: Vec<usize>,
+            /// out[i] is non-zero if i is in either M_0(s) or Tout_0(s)
+            /// These are all the next vertices that are not mapped yet, but
+            /// have an outgoing edge from the mapping.
+            out: Vec<usize>,
+            /// ins[i] is non-zero if i is in either M_0(s) or Tin_0(s)
+            /// These are all the incoming vertices, those not mapped yet, but
+            /// have an edge from them into the mapping.
+            /// Unused if graph is undirected -- it's identical with out in that case.
+            ins: Vec<usize>,
+            pub out_size: usize,
+            pub ins_size: usize,
+            pub adjacency_matrix: G::AdjMatrix,
+            generation: usize,
         }
 
-        /// Return **true** if we have a complete mapping
-        pub fn is_complete(&self) -> bool {
-            self.generation == self.mapping.len()
-        }
-
-        /// Add mapping **from** <-> **to** to the state.
-        pub fn push_mapping(&mut self, from: G::NodeId, to: usize) {
-            self.generation += 1;
-            self.mapping[self.graph.to_index(from)] = to;
-            // update T0 & T1 ins/outs
-            // T0out: Node in G0 not in M0 but successor of a node in M0.
-            // st.out[0]: Node either in M0 or successor of M0
-            for ix in self.graph.neighbors_directed(from, Outgoing) {
-                if self.out[self.graph.to_index(ix)] == 0 {
-                    self.out[self.graph.to_index(ix)] = self.generation;
-                    self.out_size += 1;
-                }
-            }
-            if self.graph.is_directed() {
-                for ix in self.graph.neighbors_directed(from, Incoming) {
-                    if self.ins[self.graph.to_index(ix)] == 0 {
-                        self.ins[self.graph.to_index(ix)] = self.generation;
-                        self.ins_size += 1;
+        impl<'a, G> Vf2State<'a, G>
+            where
+                G: GetAdjacencyMatrix + GraphProp + NodeCompactIndexable + IntoNeighborsDirected,
+            {
+                pub fn new(g: &'a G) -> Self {
+                    let c0 = g.node_count();
+                    Vf2State {
+                        graph: g,
+                        mapping: vec![std::usize::MAX; c0],
+                        out: vec![0; c0],
+                        ins: vec![0; c0 * (g.is_directed() as usize)],
+                        out_size: 0,
+                        ins_size: 0,
+                        adjacency_matrix: g.adjacency_matrix(),
+                        generation: 0,
                     }
                 }
-            }
-        }
 
-        /// Restore the state to before the last added mapping
-        pub fn pop_mapping(&mut self, from: G::NodeId) {
-            // undo (n, m) mapping
-            self.mapping[self.graph.to_index(from)] = std::usize::MAX;
-
-            // unmark in ins and outs
-            for ix in self.graph.neighbors_directed(from, Outgoing) {
-                if self.out[self.graph.to_index(ix)] == self.generation {
-                    self.out[self.graph.to_index(ix)] = 0;
-                    self.out_size -= 1;
+                /// Return **true** if we have a complete mapping
+                pub fn is_complete(&self) -> bool {
+                    self.generation == self.mapping.len()
                 }
-            }
-            if self.graph.is_directed() {
-                for ix in self.graph.neighbors_directed(from, Incoming) {
-                    if self.ins[self.graph.to_index(ix)] == self.generation {
-                        self.ins[self.graph.to_index(ix)] = 0;
-                        self.ins_size -= 1;
+
+                /// Add mapping **from** <-> **to** to the state.
+                pub fn push_mapping(&mut self, from: G::NodeId, to: usize) {
+                    self.generation += 1;
+                    self.mapping[self.graph.to_index(from)] = to;
+                    // update T0 & T1 ins/outs
+                    // T0out: Node in G0 not in M0 but successor of a node in M0.
+                    // st.out[0]: Node either in M0 or successor of M0
+                    for ix in self.graph.neighbors_directed(from, Outgoing) {
+                        if self.out[self.graph.to_index(ix)] == 0 {
+                            self.out[self.graph.to_index(ix)] = self.generation;
+                            self.out_size += 1;
+                        }
+                    }
+                    if self.graph.is_directed() {
+                        for ix in self.graph.neighbors_directed(from, Incoming) {
+                            if self.ins[self.graph.to_index(ix)] == 0 {
+                                self.ins[self.graph.to_index(ix)] = self.generation;
+                                self.ins_size += 1;
+                            }
+                        }
                     }
                 }
+
+                /// Restore the state to before the last added mapping
+                pub fn pop_mapping(&mut self, from: G::NodeId) {
+                    // undo (n, m) mapping
+                    self.mapping[self.graph.to_index(from)] = std::usize::MAX;
+
+                    // unmark in ins and outs
+                    for ix in self.graph.neighbors_directed(from, Outgoing) {
+                        if self.out[self.graph.to_index(ix)] == self.generation {
+                            self.out[self.graph.to_index(ix)] = 0;
+                            self.out_size -= 1;
+                        }
+                    }
+                    if self.graph.is_directed() {
+                        for ix in self.graph.neighbors_directed(from, Incoming) {
+                            if self.ins[self.graph.to_index(ix)] == self.generation {
+                                self.ins[self.graph.to_index(ix)] = 0;
+                                self.ins_size -= 1;
+                            }
+                        }
+                    }
+
+                    self.generation -= 1;
+                }
+
+                /// Find the next (least) node in the Tout set.
+                pub fn next_out_index(&self, from_index: usize) -> Option<usize> {
+                    self.out[from_index..]
+                        .iter()
+                        .enumerate()
+                        .find(move |&(index, &elt)| {
+                            elt > 0 && self.mapping[from_index + index] == std::usize::MAX
+                        })
+                    .map(|(index, _)| index)
+                }
+
+                /// Find the next (least) node in the Tin set.
+                pub fn next_in_index(&self, from_index: usize) -> Option<usize> {
+                    if !self.graph.is_directed() {
+                        return None;
+                    }
+                    self.ins[from_index..]
+                        .iter()
+                        .enumerate()
+                        .find(move |&(index, &elt)| {
+                            elt > 0 && self.mapping[from_index + index] == std::usize::MAX
+                        })
+                    .map(|(index, _)| index)
+                }
+
+                /// Find the next (least) node in the N - M set.
+                pub fn next_rest_index(&self, from_index: usize) -> Option<usize> {
+                    self.mapping[from_index..]
+                        .iter()
+                        .enumerate()
+                        .find(|&(_, &elt)| elt == std::usize::MAX)
+                        .map(|(index, _)| index)
+                }
             }
-
-            self.generation -= 1;
-        }
-
-        /// Find the next (least) node in the Tout set.
-        pub fn next_out_index(&self, from_index: usize) -> Option<usize> {
-            self.out[from_index..]
-                .iter()
-                .enumerate()
-                .find(move |&(index, &elt)| {
-                    elt > 0 && self.mapping[from_index + index] == std::usize::MAX
-                })
-                .map(|(index, _)| index)
-        }
-
-        /// Find the next (least) node in the Tin set.
-        pub fn next_in_index(&self, from_index: usize) -> Option<usize> {
-            if !self.graph.is_directed() {
-                return None;
-            }
-            self.ins[from_index..]
-                .iter()
-                .enumerate()
-                .find(move |&(index, &elt)| {
-                    elt > 0 && self.mapping[from_index + index] == std::usize::MAX
-                })
-                .map(|(index, _)| index)
-        }
-
-        /// Find the next (least) node in the N - M set.
-        pub fn next_rest_index(&self, from_index: usize) -> Option<usize> {
-            self.mapping[from_index..]
-                .iter()
-                .enumerate()
-                .find(|&(_, &elt)| elt == std::usize::MAX)
-                .map(|(index, _)| index)
-        }
     }
-}
 
 mod semantic {
     use super::*;
@@ -168,24 +172,24 @@ mod semantic {
     }
 
     impl<G0, G1, F> NodeMatcher<G0, G1> for F
-    where
-        G0: GraphBase + DataMap,
-        G1: GraphBase + DataMap,
-        F: FnMut(&G0::NodeWeight, &G1::NodeWeight) -> bool,
-    {
-        #[inline]
-        fn enabled() -> bool {
-            true
-        }
-        #[inline]
-        fn eq(&mut self, g0: &G0, g1: &G1, n0: G0::NodeId, n1: G1::NodeId) -> bool {
-            if let (Some(x), Some(y)) = (g0.node_weight(n0), g1.node_weight(n1)) {
-                self(x, y)
-            } else {
-                false
+        where
+            G0: GraphBase + DataMap,
+            G1: GraphBase + DataMap,
+            F: FnMut(&G0::NodeWeight, &G1::NodeWeight) -> bool,
+            {
+                #[inline]
+                fn enabled() -> bool {
+                    true
+                }
+                #[inline]
+                fn eq(&mut self, g0: &G0, g1: &G1, n0: G0::NodeId, n1: G1::NodeId) -> bool {
+                    if let (Some(x), Some(y)) = (g0.node_weight(n0), g1.node_weight(n1)) {
+                        self(x, y)
+                    } else {
+                        false
+                    }
+                }
             }
-        }
-    }
 
     pub trait EdgeMatcher<G0: GraphBase, G1: GraphBase> {
         fn enabled() -> bool;
@@ -216,38 +220,38 @@ mod semantic {
     }
 
     impl<G0, G1, F> EdgeMatcher<G0, G1> for F
-    where
-        G0: GraphBase + DataMap + IntoEdgesDirected,
-        G1: GraphBase + DataMap + IntoEdgesDirected,
-        F: FnMut(&G0::EdgeWeight, &G1::EdgeWeight) -> bool,
-    {
-        #[inline]
-        fn enabled() -> bool {
-            true
-        }
-        #[inline]
-        fn eq(
-            &mut self,
-            g0: &G0,
-            g1: &G1,
-            e0: (G0::NodeId, G0::NodeId),
-            e1: (G1::NodeId, G1::NodeId),
-        ) -> bool {
-            let w0 = g0
-                .edges_directed(e0.0, Outgoing)
-                .find(|edge| edge.target() == e0.1)
-                .and_then(|edge| g0.edge_weight(edge.id()));
-            let w1 = g1
-                .edges_directed(e1.0, Outgoing)
-                .find(|edge| edge.target() == e1.1)
-                .and_then(|edge| g1.edge_weight(edge.id()));
-            if let (Some(x), Some(y)) = (w0, w1) {
-                self(x, y)
-            } else {
-                false
+        where
+            G0: GraphBase + DataMap + IntoEdgesDirected,
+            G1: GraphBase + DataMap + IntoEdgesDirected,
+            F: FnMut(&G0::EdgeWeight, &G1::EdgeWeight) -> bool,
+            {
+                #[inline]
+                fn enabled() -> bool {
+                    true
+                }
+                #[inline]
+                fn eq(
+                    &mut self,
+                    g0: &G0,
+                    g1: &G1,
+                    e0: (G0::NodeId, G0::NodeId),
+                    e1: (G1::NodeId, G1::NodeId),
+                ) -> bool {
+                    let w0 = g0
+                        .edges_directed(e0.0, Outgoing)
+                        .find(|edge| edge.target() == e0.1)
+                        .and_then(|edge| g0.edge_weight(edge.id()));
+                    let w1 = g1
+                        .edges_directed(e1.0, Outgoing)
+                        .find(|edge| edge.target() == e1.1)
+                        .and_then(|edge| g1.edge_weight(edge.id()));
+                    if let (Some(x), Some(y)) = (w0, w1) {
+                        self(x, y)
+                    } else {
+                        false
+                    }
+                }
             }
-        }
-    }
 }
 
 mod matching {
@@ -262,20 +266,20 @@ mod matching {
 
     #[derive(Clone, PartialEq, Debug)]
     enum Frame<G0, G1>
-    where
-        G0: GraphBase,
-        G1: GraphBase,
-    {
-        Outer,
-        Inner {
-            nodes: (G0::NodeId, G1::NodeId),
-            open_list: OpenList,
-        },
-        Unwind {
-            nodes: (G0::NodeId, G1::NodeId),
-            open_list: OpenList,
-        },
-    }
+        where
+            G0: GraphBase,
+            G1: GraphBase,
+            {
+                Outer,
+                Inner {
+                    nodes: (G0::NodeId, G1::NodeId),
+                    open_list: OpenList,
+                },
+                Unwind {
+                    nodes: (G0::NodeId, G1::NodeId),
+                    open_list: OpenList,
+                },
+            }
 
     fn is_feasible<G0, G1, NM, EM>(
         st: &mut (Vf2State<'_, G0>, Vf2State<'_, G1>),
@@ -309,27 +313,27 @@ mod matching {
                 let mut succ_count = 0;
                 for n_neigh in field!(st, $j)
                     .graph
-                    .neighbors_directed(field!(nodes, $j), Outgoing)
-                {
-                    succ_count += 1;
-                    // handle the self loop case; it's not in the mapping (yet)
-                    let m_neigh = if field!(nodes, $j) != n_neigh {
-                        field!(st, $j).mapping[field!(st, $j).graph.to_index(n_neigh)]
-                    } else {
-                        field!(st, 1 - $j).graph.to_index(field!(nodes, 1 - $j))
-                    };
-                    if m_neigh == std::usize::MAX {
-                        continue;
-                    }
-                    let has_edge = field!(st, 1 - $j).graph.is_adjacent(
-                        &field!(st, 1 - $j).adjacency_matrix,
-                        field!(nodes, 1 - $j),
-                        field!(st, 1 - $j).graph.from_index(m_neigh),
-                    );
-                    if !has_edge {
-                        return false;
-                    }
-                }
+                        .neighbors_directed(field!(nodes, $j), Outgoing)
+                        {
+                            succ_count += 1;
+                            // handle the self loop case; it's not in the mapping (yet)
+                            let m_neigh = if field!(nodes, $j) != n_neigh {
+                                field!(st, $j).mapping[field!(st, $j).graph.to_index(n_neigh)]
+                            } else {
+                                field!(st, 1 - $j).graph.to_index(field!(nodes, 1 - $j))
+                            };
+                            if m_neigh == std::usize::MAX {
+                                continue;
+                            }
+                            let has_edge = field!(st, 1 - $j).graph.is_adjacent(
+                                &field!(st, 1 - $j).adjacency_matrix,
+                                field!(nodes, 1 - $j),
+                                field!(st, 1 - $j).graph.from_index(m_neigh),
+                            );
+                            if !has_edge {
+                                return false;
+                            }
+                        }
                 succ_count
             }};
         }
@@ -339,23 +343,23 @@ mod matching {
                 let mut pred_count = 0;
                 for n_neigh in field!(st, $j)
                     .graph
-                    .neighbors_directed(field!(nodes, $j), Incoming)
-                {
-                    pred_count += 1;
-                    // the self loop case is handled in outgoing
-                    let m_neigh = field!(st, $j).mapping[field!(st, $j).graph.to_index(n_neigh)];
-                    if m_neigh == std::usize::MAX {
-                        continue;
-                    }
-                    let has_edge = field!(st, 1 - $j).graph.is_adjacent(
-                        &field!(st, 1 - $j).adjacency_matrix,
-                        field!(st, 1 - $j).graph.from_index(m_neigh),
-                        field!(nodes, 1 - $j),
-                    );
-                    if !has_edge {
-                        return false;
-                    }
-                }
+                        .neighbors_directed(field!(nodes, $j), Incoming)
+                        {
+                            pred_count += 1;
+                            // the self loop case is handled in outgoing
+                            let m_neigh = field!(st, $j).mapping[field!(st, $j).graph.to_index(n_neigh)];
+                            if m_neigh == std::usize::MAX {
+                                continue;
+                            }
+                            let has_edge = field!(st, 1 - $j).graph.is_adjacent(
+                                &field!(st, 1 - $j).adjacency_matrix,
+                                field!(st, 1 - $j).graph.from_index(m_neigh),
+                                field!(nodes, 1 - $j),
+                            );
+                            if !has_edge {
+                                return false;
+                            }
+                        }
                 pred_count
             }};
         }
@@ -399,59 +403,59 @@ mod matching {
                 ($j:tt) => {{
                     for n_neigh in field!(st, $j)
                         .graph
-                        .neighbors_directed(field!(nodes, $j), Outgoing)
-                    {
-                        let m_neigh = if field!(nodes, $j) != n_neigh {
-                            field!(st, $j).mapping[field!(st, $j).graph.to_index(n_neigh)]
-                        } else {
-                            field!(st, 1 - $j).graph.to_index(field!(nodes, 1 - $j))
-                        };
-                        if m_neigh == std::usize::MAX {
-                            continue;
-                        }
+                            .neighbors_directed(field!(nodes, $j), Outgoing)
+                            {
+                                let m_neigh = if field!(nodes, $j) != n_neigh {
+                                    field!(st, $j).mapping[field!(st, $j).graph.to_index(n_neigh)]
+                                } else {
+                                    field!(st, 1 - $j).graph.to_index(field!(nodes, 1 - $j))
+                                };
+                                if m_neigh == std::usize::MAX {
+                                    continue;
+                                }
 
-                        let e0 = (field!(nodes, $j), n_neigh);
-                        let e1 = (
-                            field!(nodes, 1 - $j),
-                            field!(st, 1 - $j).graph.from_index(m_neigh),
-                        );
-                        let edges = (e0, e1);
-                        if !edge_match.eq(
-                            st.0.graph,
-                            st.1.graph,
-                            field!(edges, $j),
-                            field!(edges, 1 - $j),
-                        ) {
-                            return false;
-                        }
-                    }
+                                let e0 = (field!(nodes, $j), n_neigh);
+                                let e1 = (
+                                    field!(nodes, 1 - $j),
+                                    field!(st, 1 - $j).graph.from_index(m_neigh),
+                                );
+                                let edges = (e0, e1);
+                                if !edge_match.eq(
+                                    st.0.graph,
+                                    st.1.graph,
+                                    field!(edges, $j),
+                                    field!(edges, 1 - $j),
+                                ) {
+                                    return false;
+                                }
+                            }
                     if field!(st, $j).graph.is_directed() {
                         for n_neigh in field!(st, $j)
                             .graph
-                            .neighbors_directed(field!(nodes, $j), Incoming)
-                        {
-                            // the self loop case is handled in outgoing
-                            let m_neigh =
-                                field!(st, $j).mapping[field!(st, $j).graph.to_index(n_neigh)];
-                            if m_neigh == std::usize::MAX {
-                                continue;
-                            }
+                                .neighbors_directed(field!(nodes, $j), Incoming)
+                                {
+                                    // the self loop case is handled in outgoing
+                                    let m_neigh =
+                                        field!(st, $j).mapping[field!(st, $j).graph.to_index(n_neigh)];
+                                    if m_neigh == std::usize::MAX {
+                                        continue;
+                                    }
 
-                            let e0 = (n_neigh, field!(nodes, $j));
-                            let e1 = (
-                                field!(st, 1 - $j).graph.from_index(m_neigh),
-                                field!(nodes, 1 - $j),
-                            );
-                            let edges = (e0, e1);
-                            if !edge_match.eq(
-                                st.0.graph,
-                                st.1.graph,
-                                field!(edges, $j),
-                                field!(edges, 1 - $j),
-                            ) {
-                                return false;
-                            }
-                        }
+                                    let e0 = (n_neigh, field!(nodes, $j));
+                                    let e1 = (
+                                        field!(st, 1 - $j).graph.from_index(m_neigh),
+                                        field!(nodes, 1 - $j),
+                                    );
+                                    let edges = (e0, e1);
+                                    if !edge_match.eq(
+                                        st.0.graph,
+                                        st.1.graph,
+                                        field!(edges, $j),
+                                        field!(edges, 1 - $j),
+                                    ) {
+                                        return false;
+                                    }
+                                }
                     }
                 }};
             }
@@ -497,9 +501,9 @@ mod matching {
         }
         match (from_index, to_index) {
             (Some(n), Some(m)) => Some((
-                st.0.graph.from_index(n),
-                st.1.graph.from_index(m),
-                open_list,
+                    st.0.graph.from_index(n),
+                    st.1.graph.from_index(m),
+                    open_list,
             )),
             // No more candidates
             _ => None,
@@ -562,17 +566,17 @@ mod matching {
     ) -> Option<bool>
     where
         G0: NodeCompactIndexable
-            + EdgeCount
-            + GetAdjacencyMatrix
-            + GraphProp
-            + IntoNeighborsDirected,
+        + EdgeCount
+        + GetAdjacencyMatrix
+        + GraphProp
+        + IntoNeighborsDirected,
         G1: NodeCompactIndexable
             + EdgeCount
             + GetAdjacencyMatrix
             + GraphProp
             + IntoNeighborsDirected,
-        NM: NodeMatcher<G0, G1>,
-        EM: EdgeMatcher<G0, G1>,
+            NM: NodeMatcher<G0, G1>,
+            EM: EdgeMatcher<G0, G1>,
     {
         if st.0.is_complete() {
             return Some(true);
@@ -655,9 +659,9 @@ pub fn is_isomorphic<G0, G1>(g0: G0, g1: G1) -> bool
 where
     G0: NodeCompactIndexable + EdgeCount + GetAdjacencyMatrix + GraphProp + IntoNeighborsDirected,
     G1: NodeCompactIndexable
-        + EdgeCount
-        + GetAdjacencyMatrix
-        + GraphProp<EdgeType = G0::EdgeType>
+    + EdgeCount
+    + GetAdjacencyMatrix
+    + GraphProp<EdgeType = G0::EdgeType>
         + IntoNeighborsDirected,
 {
     if g0.node_count() != g1.node_count() || g0.edge_count() != g1.edge_count() {

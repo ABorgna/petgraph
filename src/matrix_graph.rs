@@ -10,6 +10,10 @@ use indexmap::IndexSet;
 
 use fixedbitset::FixedBitSet;
 
+use crate::lib::{Vec, RandomState};
+#[cfg(not(feature = "std"))]
+use crate::lib::vec;
+
 use crate::{Directed, Direction, EdgeType, IntoWeightedEdge, Outgoing, Undirected};
 
 use crate::graph::NodeIndex as GraphNodeIndex;
@@ -911,7 +915,7 @@ fn ensure_len<T: Default>(v: &mut Vec<T>, size: usize) {
 struct IdStorage<T> {
     elements: Vec<Option<T>>,
     upper_bound: usize,
-    removed_ids: IndexSet<usize>,
+    removed_ids: IndexSet<usize, RandomState>,
 }
 
 impl<T> IdStorage<T> {
@@ -919,7 +923,7 @@ impl<T> IdStorage<T> {
         IdStorage {
             elements: Vec::with_capacity(capacity),
             upper_bound: 0,
-            removed_ids: IndexSet::new(),
+            removed_ids: IndexSet::with_capacity_and_hasher(0, RandomState::default()),
         }
     }
 
@@ -986,7 +990,7 @@ impl<T> IndexMut<usize> for IdStorage<T> {
 #[derive(Debug, Clone)]
 struct IdIterator<'a> {
     upper_bound: usize,
-    removed_ids: &'a IndexSet<usize>,
+    removed_ids: &'a IndexSet<usize, RandomState>,
     current: Option<usize>,
 }
 

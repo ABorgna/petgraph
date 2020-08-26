@@ -19,12 +19,16 @@ jobs:
           - rust: 1.37.0  # MSRV
           - rust: stable
             features: unstable quickcheck
-            test_all: --all
+            test_all: --workspace
           - rust: beta
-            test_all: --all
+            test_all: --workspace
           - rust: nightly
             features: unstable quickcheck
-            test_all: --all
+            test_all: --workspace
+        default_features:
+          - default_features:
+          - default_features: std graphmap stable_graph matrix_graph
+          - default_features: graphmap stable_graph matrix_graph  # no_std
 
     steps:
       - uses: actions/checkout@v2
@@ -35,10 +39,9 @@ jobs:
           override: true
       - name: Tests
         run: |
-          cargo build --verbose --no-default-features
-          cargo test --verbose --no-default-features
-          cargo build --verbose --features "${{ matrix.features }}"
-          cargo test ${{ matrix.test_all }} --verbose --features "${{ matrix.features }}"
+          cargo build --verbose --no-default-features --features "${{ matrix.default_features }} ${{ matrix.features }}"
+          cargo test ${{ matrix.test_all }} --verbose --no-default-features --features "${{ matrix.default_features }} ${{ matrix.features }}"
+
 
   rustfmt:
     runs-on: ubuntu-latest
