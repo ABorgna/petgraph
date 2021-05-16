@@ -3,9 +3,9 @@ use std::{
     iter::{from_fn, FromIterator},
 };
 
-use crate::lib::{RandomState};
 #[cfg(not(feature = "std"))]
 use crate::lib::vec;
+use crate::lib::RandomState;
 
 use indexmap::IndexSet;
 
@@ -107,16 +107,16 @@ where
 
 #[cfg(test)]
 mod test {
-    use crate::lib::{HashSet, Vec};
     #[cfg(not(feature = "std"))]
     use crate::lib::vec;
+    use crate::lib::{HashSet, Vec};
     use std::iter::FromIterator;
 
     use itertools::assert_equal;
 
-    use crate::prelude::DiGraph;
     #[cfg(feature = "std")]
     use crate::dot::Dot;
+    use crate::prelude::DiGraph;
 
     use super::all_simple_paths;
 

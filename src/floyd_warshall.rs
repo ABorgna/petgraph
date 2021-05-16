@@ -1,5 +1,6 @@
-use std::collections::HashMap;
-
+#[cfg(not(feature = "std"))]
+use crate::lib::vec;
+use crate::lib::HashMap;
 use std::hash::Hash;
 
 use super::visit::{EdgeRef, IntoEdgeReferences, IntoNodeIdentifiers, NodeCompactIndexable};

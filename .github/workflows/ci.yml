@@ -27,7 +27,7 @@ jobs:
             test_all: --workspace
         default_features:
           - default_features:
-          - default_features: std graphmap stable_graph matrix_graph
+          - default_features: default
           - default_features: graphmap stable_graph matrix_graph  # no_std
 
     steps:

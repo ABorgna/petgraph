@@ -6,7 +6,7 @@ use crate::visit::{
     EdgeRef, GraphProp, IntoEdgeReferences, IntoNodeReferences, NodeIndexable, NodeRef,
 };
 
-use crate::lib::{String, ToString};
+use crate::lib::String;
 
 /// `Dot` implements output to graphviz .dot format for a graph.
 ///
@@ -285,9 +285,9 @@ mod test {
     use crate::visit::NodeRef;
     use std::fmt::Write;
 
-    use crate::lib::{String};
     #[cfg(not(feature = "std"))]
     use crate::lib::format;
+    use crate::lib::String;
 
     #[test]
     fn test_escape() {

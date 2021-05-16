@@ -1,7 +1,6 @@
-
-use crate::lib::{BinaryHeap, HashMap, Vec};
 #[cfg(not(feature = "std"))]
 use crate::lib::vec;
+use crate::lib::{BinaryHeap, HashMap, Vec};
 
 use std::hash::Hash;
 

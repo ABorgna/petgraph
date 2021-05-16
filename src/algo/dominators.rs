@@ -13,12 +13,11 @@
 //! dominates **C** and **C** dominates **B**.
 
 use std::cmp::Ordering;
-use std::collections::{hash_map::Iter, HashMap, HashSet};
 use std::hash::Hash;
 
-use crate::lib::{HashMap, HashSet, Iter, Vec};
 #[cfg(not(feature = "std"))]
 use crate::lib::vec;
+use crate::lib::{HashMap, HashSet, Iter, Vec};
 
 use crate::visit::{DfsPostOrder, GraphBase, IntoNeighbors, Visitable, Walker};
 

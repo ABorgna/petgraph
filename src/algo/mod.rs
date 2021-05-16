@@ -7,14 +7,13 @@
 pub mod dominators;
 pub mod tred;
 
-use std::collections::{BinaryHeap, HashMap};
 use std::num::NonZeroUsize;
 
 use crate::prelude::*;
 
-use crate::lib::{VecDeque, BinaryHeap, HashMap, Vec};
 #[cfg(not(feature = "std"))]
 use crate::lib::vec;
+use crate::lib::{BinaryHeap, HashMap, Vec, VecDeque};
 
 use super::graph::IndexType;
 use super::unionfind::UnionFind;

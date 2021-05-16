@@ -6,10 +6,9 @@ use std::marker::PhantomData;
 use std::ops::{Index, IndexMut, Range};
 use std::slice::Windows;
 
-
-use crate::lib::{Vec};
 #[cfg(not(feature = "std"))]
 use crate::lib::vec;
+use crate::lib::Vec;
 
 use crate::visit::{Data, GraphProp, IntoEdgeReferences, NodeCount};
 use crate::visit::{EdgeRef, GraphBase, IntoEdges, IntoNeighbors, NodeIndexable};
@@ -752,10 +751,10 @@ mod tests {
     use crate::algo::bellman_ford;
     #[cfg(feature = "std")]
     use crate::algo::tarjan_scc;
+    use crate::lib::Vec;
     use crate::visit::Dfs;
     use crate::visit::VisitMap;
     use crate::Undirected;
-    use crate::lib::{Vec};
 
     #[test]
     fn csr1() {

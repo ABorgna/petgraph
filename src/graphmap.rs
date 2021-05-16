@@ -15,12 +15,12 @@ use std::slice::Iter;
 
 use crate::lib::{RandomState, Vec};
 
-use crate::{Directed, Direction, EdgeType, Incoming, Outgoing, Undirected};
 use crate::graph::node_index;
 use crate::graph::Graph;
 use crate::visit::{IntoEdgeReferences, IntoEdges, NodeCompactIndexable};
 use crate::visit::{IntoNodeIdentifiers, IntoNodeReferences, NodeCount, NodeIndexable};
 use crate::IntoWeightedEdge;
+use crate::{Directed, Direction, EdgeType, Incoming, Outgoing, Undirected};
 
 /// A `GraphMap` with undirected edges.
 ///
@@ -577,7 +577,6 @@ where
     edges: &'a IndexMap<(N, N), E, RandomState>,
     iter: Neighbors<'a, N, Ty>,
 }
-
 
 impl<'a, N, E, Ty> Iterator for Edges<'a, N, E, Ty>
 where

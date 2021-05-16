@@ -10,6 +10,9 @@
 
 use crate::adj::{List, UnweightedList};
 use crate::graph::IndexType;
+#[cfg(not(feature = "std"))]
+use crate::lib::vec;
+use crate::lib::Vec;
 use crate::visit::{
     GraphBase, IntoNeighbors, IntoNeighborsDirected, NodeCompactIndexable, NodeCount,
 };

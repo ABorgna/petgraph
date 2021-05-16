@@ -10,9 +10,9 @@ use indexmap::IndexSet;
 
 use fixedbitset::FixedBitSet;
 
-use crate::lib::{Vec, RandomState};
 #[cfg(not(feature = "std"))]
 use crate::lib::vec;
+use crate::lib::{RandomState, Vec};
 
 use crate::{Directed, Direction, EdgeType, IntoWeightedEdge, Outgoing, Undirected};
 

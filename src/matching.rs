@@ -1,4 +1,6 @@
-use std::collections::VecDeque;
+#[cfg(not(feature = "std"))]
+use crate::lib::vec;
+use crate::lib::{Vec, VecDeque};
 use std::hash::Hash;
 
 use super::visit::{

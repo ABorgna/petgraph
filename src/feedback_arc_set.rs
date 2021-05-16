@@ -1,7 +1,5 @@
-use std::{
-    collections::{HashMap, VecDeque},
-    ops::{Index, IndexMut},
-};
+use crate::lib::{HashMap, Vec, VecDeque};
+use std::ops::{Index, IndexMut};
 
 use crate::{
     graph::{GraphIndex, NodeIndex},
@@ -329,6 +327,7 @@ impl Buckets {
 }
 
 mod linked_list {
+    use crate::lib::Vec;
     use std::{marker::PhantomData, ops::IndexMut};
 
     #[derive(PartialEq, Debug)]

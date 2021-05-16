@@ -1,6 +1,7 @@
 //! Simple adjacency list.
 use crate::data::{Build, DataMap, DataMapMut};
 use crate::iter_format::NoPretty;
+use crate::lib::{Box, Vec};
 use crate::visit::{self, EdgeRef, IntoEdgeReferences, IntoNeighbors, NodeCount};
 use fixedbitset::FixedBitSet;
 use std::fmt;

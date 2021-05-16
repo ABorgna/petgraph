@@ -3,8 +3,8 @@ use serde::{Deserialize, Deserializer, Serialize, Serializer};
 
 use std::marker::PhantomData;
 
+use crate::lib::Vec;
 use crate::prelude::*;
-use crate::lib::{Vec};
 
 use crate::graph::Node;
 use crate::graph::{Edge, IndexType};
@@ -267,7 +267,7 @@ fn test_from_deserialized_with_holes() {
     use crate::stable_graph::StableUnGraph;
     use itertools::assert_equal;
     use serde::de::value::Error as SerdeError;
-    
+
     #[cfg(not(feature = "std"))]
     use crate::lib::vec;
 

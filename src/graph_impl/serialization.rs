@@ -2,8 +2,8 @@ use serde::de::Error;
 
 use std::marker::PhantomData;
 
+use crate::lib::Vec;
 use crate::prelude::*;
-use crate::lib::{Vec};
 
 use crate::graph::Node;
 use crate::graph::{Edge, IndexType};
